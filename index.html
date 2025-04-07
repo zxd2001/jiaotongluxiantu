@@ -1,0 +1,2497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>地铁路线生成器</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #fff;
+    }
+    
+    .route-generator {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .control-group label {
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .control-group input, .control-group select {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .metro-line-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 80px;
+      padding: 15px 0;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 90px;
+      height: 90px;
+      font-size: 55px;
+      font-weight: bold;
+      margin-right: 25px;
+      background-color: transparent !important;
+      border: 20px solid;
+      line-height: 1;
+      padding: 0;
+      color: #000;
+      position: relative;
+    }
+    
+    .logo::before {
+      content: attr(data-char);
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    
+    .logo.circle {
+      border-radius: 50%;
+    }
+    
+    .logo.square {
+      border-radius: 15px;
+    }
+    
+    .line-name {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .line-name-en {
+      font-size: 36px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    
+    .line-name-jp {
+      font-size: 48px;
+      font-weight: bold;
+    }
+    
+    .metro-line-container {
+      position: relative;
+      margin-bottom: 250px;
+      padding: 0 30px;
+      overflow-x: auto;
+      max-width: 100%;
+      scrollbar-width: thin; /* For Firefox */
+      scrollbar-color: #888 #f1f1f1; /* For Firefox */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+    
+    .metro-line {
+      position: relative;
+      height: 40px;
+      border-radius: 20px;
+      margin: 120px 0 40px 0;
+      box-shadow: none;
+      overflow: visible;
+      z-index: 1;
+    }
+    
+    .station {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+    
+    .station-dot {
+      width: 30px;
+      height: 30px;
+      background-color: white;
+      border: 2px solid #333;
+      border-radius: 50%;
+      box-shadow: none;
+      transition: transform 0.2s ease;
+    }
+    
+    .station:hover .station-dot {
+      transform: scale(1.1);
+    }
+    
+    .station-codes {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 0;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .station-code {
+      position: absolute;
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      transform: translateX(-50%);
+      top: 40px;
+      width: auto;
+      min-width: 40px;
+      white-space: nowrap;
+      display: block;
+    }
+    
+    .arrow {
+      position: absolute;
+      width: 0;
+      height: 0;
+      top: 0;
+      transition: transform 0.2s ease;
+      z-index: 5;
+      filter: none;
+    }
+    
+    .metro-line-container.right .arrow {
+      right: -25px;
+      border-top: 20px solid transparent;
+      border-bottom: 20px solid transparent;
+      border-left: 30px solid;
+      border-right: none;
+    }
+    
+    .metro-line-container.left .arrow {
+      left: -25px;
+      border-top: 20px solid transparent;
+      border-bottom: 20px solid transparent;
+      border-right: 30px solid;
+      border-left: none;
+    }
+    
+    .metro-line-container:hover .arrow {
+      transform: translateX(3px);
+      filter: none;
+    }
+    
+    .metro-line-container.left:hover .arrow {
+      transform: translateX(-3px);
+    }
+    
+    .station-names {
+      position: relative;
+      width: 100%;
+      height: 300px; /* 增加高度 */
+      pointer-events: none;
+      padding-bottom: 20px;
+      overflow: visible; /* 允许内容溢出 */
+    }
+    
+    .station-name {
+      position: absolute;
+      width: 30px;
+      transform: translateX(-50%);
+    }
+    
+    .name-en {
+      position: absolute;
+      font-size: 14px;
+      font-weight: bold;
+      color: #000;
+      white-space: nowrap;
+      top: -50px;
+      transform: rotate(-45deg);
+      transform-origin: left bottom;
+      text-align: left;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .name-jp {
+      position: absolute;
+      width: auto;
+      min-width: 60px; /* 增加最小宽度 */
+      max-width: none; /* 移除最大宽度限制 */
+      font-size: 22px;
+      font-weight: bold;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align: center;
+      transform: translateX(-50%);
+      top: 85px;
+      overflow: visible; /* 允许内容溢出 */
+      box-sizing: content-box; /* 确保padding不压缩内容 */
+      display: flex;
+      justify-content: center; /* 水平居中内容 */
+      align-items: center; /* 垂直居中内容 */
+    }
+    
+    .name-en:hover, .name-jp:hover {
+      text-decoration: underline;
+      opacity: 0.8;
+    }
+    
+    .edit-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      width: 320px;
+      max-width: 90vw;
+      animation: fadeIn 0.2s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, -45%); }
+      to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+    
+    .edit-popup h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #333;
+    }
+    
+    .edit-popup label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #555;
+    }
+    
+    .edit-popup input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    
+    .edit-popup input:focus {
+      border-color: #4CAF50;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.25);
+    }
+    
+    .edit-popup button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    
+    .edit-popup button.save {
+      background-color: #4CAF50;
+      color: white;
+    }
+    
+    .edit-popup button.save:hover {
+      background-color: #45a049;
+    }
+    
+    .edit-popup button.cancel {
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    
+    .edit-popup button.cancel:hover {
+      background-color: #e8e8e8;
+    }
+    
+    .stations-editor {
+      margin-top: 50px;
+      border-top: 1px solid #ddd;
+      padding-top: 25px;
+    }
+    
+    .stations-editor h3 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    
+    .station-edit {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      padding: 18px;
+      background-color: #f9f9f9;
+      border-radius: 8px;
+    }
+    
+    .station-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background-color: #333;
+      color: white;
+        border-radius: 50%;
+      margin-right: 20px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    
+    .station-fields {
+      display: flex;
+      flex: 1;
+      gap: 15px;
+      align-items: center;
+    }
+    
+    .station-fields input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-size: 16px;
+    }
+    
+    .color-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .color-field label {
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    
+    button {
+      padding: 10px 18px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    
+    .add-btn {
+      background-color: #4CAF50;
+    }
+    
+    .remove-btn {
+      background-color: #f44336;
+    }
+    
+    .export-btn {
+      background-color: #2196F3;
+    }
+    
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+    
+    /* 自适应布局 */
+    @media (max-width: 768px) {
+      .station-fields {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      
+      .name-jp {
+        height: 150px;
+      }
+      
+      .controls {
+        flex-direction: column;
+        padding: 15px;
+      }
+      
+      .metro-line-header {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 40px;
+      }
+      
+      .logo {
+        margin-bottom: 15px;
+      }
+      
+      .station-edit {
+        flex-direction: column;
+        padding: 12px;
+      }
+      
+      .station-number {
+        margin-bottom: 10px;
+        align-self: center;
+      }
+    }
+    
+    /* 合并重复的对齐样式 */
+    .station-name, .station-code {
+      position: relative;
+      text-align: center;
+    }
+    
+    .station-codes {
+      position: relative;
+      width: 100%;
+      height: 50px;
+      margin-top: 40px;
+      pointer-events: none;
+    }
+    
+    .name-en, .name-jp, .station-code {
+      pointer-events: auto;
+    }
+    
+    /* 添加序号底部的黑线 */
+    .station-code-line {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background-color: #000;
+      top: 60px; /* 序号下方位置 */
+      left: 0;
+    }
+    
+    /* 调整站点代码，使其处于黑线上方 */
+    .station-code {
+      position: absolute;
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      transform: translateX(-50%);
+      top: 40px; /* 保持在图片中的位置 */
+      width: auto;
+      min-width: 40px;
+      white-space: nowrap;
+      display: block;
+    }
+    
+    /* 调整汉字站名，确保位于黑线下方 */
+    .name-jp {
+      position: absolute;
+      width: auto;
+      min-width: 30px;
+      font-size: 22px;
+      font-weight: bold;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align: center;
+      transform: translateX(-50%);
+      top: 85px; /* 增加与黑线的距离 */
+    }
+    
+    /* 添加线路名居左居右的切换 */
+    .metro-line-container.right .line-name {
+      text-align: left;
+    }
+    
+    .metro-line-container.left .line-name {
+      text-align: right;
+    }
+
+    /* Make scroll buttons for browsers that support it */
+    .scroll-control {
+      position: absolute;
+      top: 190px; /* Position at the middle of the line */
+      width: 30px;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      cursor: pointer;
+      z-index: 100;
+      font-weight: bold;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+
+    .scroll-control:hover {
+      background: rgba(255, 255, 255, 1);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    }
+
+    .scroll-control.left {
+      left: 5px;
+    }
+
+    .scroll-control.right {
+      right: 5px;
+    }
+
+    /* Fix for mobile scroll */
+    @media (max-width: 768px) {
+      .metro-line-container {
+        -webkit-overflow-scrolling: touch;
+        overflow-x: scroll;
+        padding: 0 15px;
+      }
+      
+      /* Show mobile scroll hint */
+      .metro-line-container::after {
+        content: "← Scroll →";
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 12px;
+        color: #666;
+        opacity: 0.8;
+        pointer-events: none;
+      }
+    }
+
+    /* 添加工作台样式 */
+    .editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .editor-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-box input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .search-box button {
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .editor-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .editor-table-header {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .col-index, .col-code, .col-name-cn, .col-name-en, .col-actions {
+      flex: 1;
+    }
+
+    .station-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .station-row:hover {
+      background-color: #f0f0f0;
+    }
+
+    .selected {
+      background-color: #e0e0e0;
+    }
+
+    .action-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+
+    .sort-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+    }
+
+    .sort-option {
+      display: block;
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .sort-option:hover {
+      background-color: #f0f0f0;
+    }
+
+    /* 添加站点编辑工作台样式 - 在CSS末尾添加 */
+    .editor-header {
+      margin-bottom: 15px;
+    }
+
+    .editor-controls {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+    }
+
+    .search-box input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 250px;
+      font-size: 14px;
+    }
+
+    .search-btn {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-left: none;
+      border-radius: 0 4px 4px 0;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .editor-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .action-btn {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #333;
+    }
+
+    .action-btn:hover {
+      background: #e8e8e8;
+    }
+
+    .editor-table-header {
+      display: flex;
+      background-color: #f0f0f0;
+      padding: 12px 15px;
+      font-weight: bold;
+      border-radius: 4px 4px 0 0;
+      border: 1px solid #ddd;
+    }
+
+    .stations-list {
+      border: 1px solid #ddd;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      overflow: hidden;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .station-row {
+      display: flex;
+      padding: 10px 15px;
+      border-bottom: 1px solid #eee;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .station-row:last-child {
+      border-bottom: none;
+    }
+
+    .station-row:hover {
+      background-color: #f9f9f9;
+    }
+
+    .station-row.selected {
+      background-color: #e3f2fd;
+    }
+
+    .col-index, .col-code, .col-name-cn, .col-name-en, .col-actions {
+      padding: 5px;
+    }
+
+    .col-index {
+      width: 60px;
+      text-align: center;
+    }
+
+    .col-code {
+      width: 100px;
+    }
+
+    .col-name-cn, .col-name-en {
+      flex: 1;
+    }
+
+    .col-actions {
+      width: 150px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .edit-btn, .up-btn, .down-btn, .remove-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 5px;
+      opacity: 0.6;
+      transition: all 0.2s;
+    }
+
+    .edit-btn:hover, .up-btn:hover, .down-btn:hover {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+
+    .remove-btn:hover {
+      opacity: 1;
+      color: #f44336;
+      transform: scale(1.2);
+    }
+
+    button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .sort-menu {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 100;
+      overflow: hidden;
+    }
+
+    .sort-option {
+      padding: 10px 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sort-option:hover {
+      background-color: #f5f5f5;
+    }
+
+    /* 添加或更新以下CSS样式 */
+    .col-checkbox {
+      width: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .station-row [contenteditable="true"] {
+      padding: 5px 8px;
+      min-height: 22px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+      border-radius: 3px;
+    }
+
+    .station-row [contenteditable="true"]:hover {
+      border-color: #ddd;
+      background-color: #f9f9f9;
+    }
+
+    .station-row [contenteditable="true"]:focus {
+      border-color: #4CAF50;
+      background-color: #fff;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+    }
+
+    .delete-selected-btn {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .delete-selected-btn:hover {
+      background-color: #d32f2f;
+    }
+
+    .multi-select-btn.active {
+      background-color: #e8e8e8;
+      color: #f44336;
+    }
+
+    /* 添加当前站点相关样式 */
+    .current-station-row {
+      background-color: rgba(255, 165, 0, 0.2) !important; /* 使用线路颜色，但透明度调整 */
+      font-weight: bold;
+      border-left: 4px solid #FFA500;
+    }
+
+    .location-btn {
+      background-color: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+      margin-right: 5px;
+      color: #333;
+    }
+
+    .location-btn:hover {
+      background-color: #e0e0e0;
+      transform: translateY(-2px);
+    }
+
+    .location-btn.active {
+      background-color: #4CAF50;
+      color: white;
+      border-color: #388E3C;
+      font-weight: bold;
+    }
+
+    /* 路线图中的当前站点显示 */
+    .station.current-station .station-dot {
+      transform: scale(1.2);
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+    }
+
+    /* 更新位于该站标记的样式 */
+    .current-station-marker {
+      position: absolute;
+      background-color: inherit; /* 会继承动态设置的线路颜色 */
+      color: white;
+      padding: 5px 15px;
+      height: 30px;
+      border-radius: 15px; /* 圆角为高度的一半，形成胶囊形状 */
+      font-size: 16px;
+      font-weight: bold;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 调整汉字站名容器样式，防止溢出 */
+    .name-jp {
+      position: absolute;
+      width: auto;
+      min-width: 30px;
+      max-width: 45px; /* 限制最大宽度 */
+      font-size: 22px;
+      font-weight: bold;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      text-align: center;
+      transform: translateX(-50%);
+      top: 85px;
+      max-height: 160px; /* 稍微增加最大高度 */
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* 添加当前站点的汉字名称样式 */
+    .station.current-station ~ .station-names .name-jp {
+      transition: all 0.3s ease;
+    }
+
+    /* 当前位置标记的位置调整，避免与汉字重叠 */
+    .current-station-marker {
+      top: 280px; /* 调整位置，确保不与站名重叠 */
+    }
+  </style>
+</head>
+<body>
+  <div class="route-generator" id="app">
+    <div class="controls">
+      <div class="control-group">
+        <label>线路颜色:</label>
+        <input type="color" id="lineColor" value="#FFA500" />
+      </div>
+      <div class="control-group">
+        <label>标志形状:</label>
+        <select id="logoShape">
+          <option value="circle">圆形</option>
+          <option value="square">方形</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>标志字符:</label>
+        <input type="text" id="logoChar" maxlength="1" value="G" />
+      </div>
+      <div class="control-group">
+        <label>方向:</label>
+        <select id="direction">
+          <option value="right">向右 →</option>
+          <option value="left">向左 ←</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>线路名称 (英文):</label>
+        <input type="text" id="lineNameEn" value="Tokyo Metro Ginza Line" />
+      </div>
+      <div class="control-group">
+        <label>线路名称 (汉字):</label>
+        <input type="text" id="lineNameJp" value="東京地下鉄銀座線" />
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <button id="addStationBtn" class="add-btn">添加站点</button>
+      <button id="exportSvgBtn" class="export-btn">导出SVG</button>
+      <button id="exportPngBtn" class="export-btn" style="background-color: #9C27B0;">导出PNG</button>
+    </div>
+
+    <div class="metro-line-header">
+      <div id="logo" class="logo circle" style="background-color: #FFA500;" data-char="G">
+        G
+      </div>
+      <div class="line-name">
+        <div id="lineNameEnDisplay" class="line-name-en">Tokyo Metro Ginza Line</div>
+        <div id="lineNameJpDisplay" class="line-name-jp">東京地下鉄銀座線</div>
+      </div>
+    </div>
+
+    <div id="metroLineContainer" class="metro-line-container right">
+      <div id="metroLine" class="metro-line" style="background-color: #FFA500;">
+        <!-- 站点将在这里动态生成 -->
+        <div class="arrow" style="border-left-color: #FFA500; border-right-color: #FFA500;"></div>
+      </div>
+
+      <div id="stationCodes" class="station-codes">
+        <!-- 站点代码将在这里动态生成 -->
+      </div>
+
+      <div id="stationNames" class="station-names">
+        <!-- 站点名称将在这里动态生成 -->
+      </div>
+    </div>
+
+    <div class="stations-editor">
+      <h3>站点编辑</h3>
+      <div id="stationsEditor">
+        <!-- 站点编辑区域将在这里动态生成 -->
+      </div>
+    </div>
+    
+    <!-- 用于SVG导出的隐藏容器 -->
+    <div id="svgContainer" style="display: none;"></div>
+  </div>
+
+  <script>
+    // 数据
+    const app = {
+      lineColor: '#FFA500',
+      logoShape: 'circle',
+      logoChar: 'G',
+      direction: 'right',
+      lineNameEn: 'Tokyo Metro Ginza Line',
+      lineNameJp: '東京地下鉄銀座線',
+      stations: [
+        { code: 'G-01', nameEn: 'Shibuya', nameJp: '渋谷', codeColor: '' },
+        { code: 'G-02', nameEn: 'Omoteando', nameJp: '表参道', codeColor: '' },
+        { code: 'G-03', nameEn: 'Gaienmae', nameJp: '外苑前', codeColor: '' },
+        { code: 'G-04', nameEn: 'Aoyama-itchome', nameJp: '青山一丁目', codeColor: '' },
+        { code: 'G-05', nameEn: 'Akasaka-mitsuke', nameJp: '赤坂見附', codeColor: '' },
+        { code: 'G-06', nameEn: 'Tameike-Sanno', nameJp: '溜池山王', codeColor: '' },
+        { code: 'G-07', nameEn: 'Toranomon', nameJp: '虎ノ門', codeColor: '' },
+        { code: 'G-08', nameEn: 'Shimbashi', nameJp: '新橋', codeColor: '' },
+        { code: 'G-09', nameEn: 'Ginza', nameJp: '銀座', codeColor: '' }
+      ]
+    };
+
+    // DOM 元素
+    const elements = {
+      lineColor: document.getElementById('lineColor'),
+      logoShape: document.getElementById('logoShape'),
+      logoChar: document.getElementById('logoChar'),
+      direction: document.getElementById('direction'),
+      lineNameEn: document.getElementById('lineNameEn'),
+      lineNameJp: document.getElementById('lineNameJp'),
+      addStationBtn: document.getElementById('addStationBtn'),
+      exportSvgBtn: document.getElementById('exportSvgBtn'),
+      exportPngBtn: document.getElementById('exportPngBtn'),
+      logo: document.getElementById('logo'),
+      lineNameEnDisplay: document.getElementById('lineNameEnDisplay'),
+      lineNameJpDisplay: document.getElementById('lineNameJpDisplay'),
+      metroLineContainer: document.getElementById('metroLineContainer'),
+      metroLine: document.getElementById('metroLine'),
+      stationCodes: document.getElementById('stationCodes'),
+      stationNames: document.getElementById('stationNames'),
+      stationsEditor: document.getElementById('stationsEditor'),
+      svgContainer: document.getElementById('svgContainer')
+    };
+
+    // 添加全局变量
+    let currentEditingStation = null;
+    let editPopup = null;
+    
+    // 添加拼音转换功能
+    let pinyinMap = {};
+    let pinyinLoaded = false;
+    
+    // 替换加载拼音数据的函数，直接内置拼音数据
+    function loadPinyinData() {
+      // 内置基础拼音字典
+      pinyinMap = {
+        '北': 'bei', '京': 'jing', '上': 'shang', '海': 'hai', '广': 'guang', 
+        '州': 'zhou', '深': 'shen', '圳': 'zhen', '成': 'cheng', '都': 'du',
+        '东': 'dong', '西': 'xi', '南': 'nan', '站': 'zhan', '点': 'dian',
+        '人': 'ren', '民': 'min', '公': 'gong', '园': 'yuan', '路': 'lu',
+        '街': 'jie', '大': 'da', '小': 'xiao', '中': 'zhong',
+        '啊': 'a', '哎': 'ai', '唉': 'ai', '安': 'an', '按': 'an', '百': 'bai',
+        '白': 'bai', '班': 'ban', '办': 'ban', '半': 'ban', '包': 'bao', '抱': 'bao',
+        '报': 'bao', '杯': 'bei', '本': 'ben', '必': 'bi', '边': 'bian', '便': 'bian',
+        '表': 'biao', '别': 'bie', '并': 'bing', '步': 'bu', '部': 'bu', '才': 'cai',
+        '菜': 'cai', '餐': 'can', '层': 'ceng', '茶': 'cha', '差': 'cha', '常': 'chang',
+        '厂': 'chang', '车': 'che', '城': 'cheng', '吃': 'chi', '出': 'chu', '处': 'chu',
+        '川': 'chuan', '穿': 'chuan', '船': 'chuan', '次': 'ci', '从': 'cong', '村': 'cun',
+        '存': 'cun', '错': 'cuo', '打': 'da', '带': 'dai', '但': 'dan', '蛋': 'dan',
+        '当': 'dang', '到': 'dao', '道': 'dao', '得': 'de', '的': 'de', '等': 'deng',
+        '地': 'di', '第': 'di', '典': 'dian', '店': 'dian', '调': 'diao', '丁': 'ding', 
+        '定': 'ding', '冬': 'dong', '懂': 'dong', '动': 'dong', '都': 'dou', '读': 'du', 
+        '段': 'duan', '短': 'duan', '对': 'dui', '多': 'duo', '饿': 'e', '儿': 'er', 
+        '而': 'er', '发': 'fa', '法': 'fa', '饭': 'fan', '方': 'fang', '房': 'fang', 
+        '放': 'fang', '非': 'fei', '飞': 'fei', '分': 'fen', '风': 'feng', '否': 'fou', 
+        '付': 'fu', '父': 'fu', '副': 'fu', '复': 'fu', '该': 'gai', '改': 'gai', 
+        '干': 'gan', '甘': 'gan', '刚': 'gang', '高': 'gao', '告': 'gao', '哥': 'ge',
+        '线': 'xian', '铁': 'tie', '轨': 'gui', '道': 'dao', '交': 'jiao', '通': 'tong',
+        '市': 'shi', '区': 'qu', '县': 'xian', '省': 'sheng', '地': 'di', '铁': 'tie',
+        '号': 'hao', '文': 'wen', '化': 'hua', '体': 'ti', '育': 'yu', '场': 'chang',
+        '商': 'shang', '业': 'ye', '工': 'gong', '学': 'xue', '院': 'yuan', '校': 'xiao'
+      };
+      
+      // 拼音数据加载完成
+      pinyinLoaded = true;
+    }
+    
+    // 修改站点代码生成逻辑，使用标志字符作为首字母
+    function generateStationCode(index) {
+      // 使用标志字符作为前缀，例如 G-01, G-02 等
+      const prefix = app.logoChar || 'G';
+      const number = (index + 1).toString().padStart(2, '0');
+      return `${prefix}-${number}`;
+    }
+    
+    // 重构添加站点函数，使用新的代码生成逻辑
+    function addStation() {
+      const stationIndex = app.stations.length + 1;
+      const newCode = generateStationCode(app.stations.length);
+      const defaultJpName = `站点${stationIndex}`;
+      
+      // 尝试转换为拼音，如果失败则使用默认英文名
+      let nameEn = generateEnglishStationName(defaultJpName);
+      if (!nameEn) {
+        nameEn = `Station ${stationIndex}`;
+      }
+      
+      app.stations.push({
+        nameEn: nameEn,
+        nameJp: defaultJpName,
+        code: newCode,
+        codeColor: app.lineColor,
+        isCurrentStation: false // 添加当前站点标记，默认为false
+      });
+      
+      updateDisplay();
+      
+      // 自动打开编辑弹窗让用户编辑新添加的站点
+      createEditPopup(app.stations[app.stations.length - 1], app.stations.length - 1);
+    }
+    
+    // 更新现有站点代码，确保它们与标志字符保持一致
+    function updateStationCodes() {
+      app.stations.forEach((station, index) => {
+        station.code = generateStationCode(index);
+      });
+    }
+    
+    // Enhanced edit popup with better UI
+    function createEditPopup(station, index) {
+      // Clear any existing popup
+      if (editPopup) {
+        document.body.removeChild(editPopup);
+      }
+      
+      currentEditingStation = { station, index };
+      
+      editPopup = document.createElement('div');
+      editPopup.className = 'edit-popup';
+      editPopup.innerHTML = `
+        <h3>编辑站点</h3>
+        <label>汉字站名:</label>
+        <input type="text" id="edit-name-jp" value="${station.nameJp}" placeholder="输入汉字站名">
+        <label>英文站名: <span style="font-weight: normal; font-size: 12px; color: #666;">(自动生成)</span></label>
+        <input type="text" id="edit-name-en" value="${station.nameEn}" placeholder="英文站名将自动生成">
+        <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+          <button class="save">保存</button>
+          <button class="cancel">取消</button>
+        </div>
+      `;
+      
+      document.body.appendChild(editPopup);
+      
+      // 获取DOM元素
+      const chineseInput = document.getElementById('edit-name-jp');
+      const englishInput = document.getElementById('edit-name-en');
+      
+      // 添加汉字名称输入事件监听，自动转换为拼音
+      chineseInput.addEventListener('input', function() {
+        const currentJp = this.value;
+        
+        // 始终自动转换拼音
+          const newPinyin = generateEnglishStationName(currentJp);
+        
+        // 如果生成了有效的拼音，则更新英文名
+          if (newPinyin) {
+          englishInput.value = newPinyin;
+        }
+      });
+      
+      // 其他现有功能
+      chineseInput.focus();
+      
+      // 添加键盘支持
+      editPopup.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          saveStationEdit();
+        } else if (e.key === 'Escape') {
+          closeEditPopup();
+        }
+      });
+      
+      // 设置按钮事件监听器
+      const saveBtn = editPopup.querySelector('.save');
+      const cancelBtn = editPopup.querySelector('.cancel');
+      
+      saveBtn.addEventListener('click', saveStationEdit);
+      cancelBtn.addEventListener('click', closeEditPopup);
+      
+      // 添加点击外部关闭弹窗的功能
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    function saveStationEdit() {
+      const nameEn = document.getElementById('edit-name-en').value;
+      const nameJp = document.getElementById('edit-name-jp').value;
+      
+      if (nameEn && nameJp) {
+        app.stations[currentEditingStation.index].nameEn = nameEn;
+        app.stations[currentEditingStation.index].nameJp = nameJp;
+        updateDisplay();
+      }
+      
+      closeEditPopup();
+    }
+
+    function handleClickOutside(e) {
+      if (editPopup && !editPopup.contains(e.target)) {
+        closeEditPopup();
+      }
+    }
+
+    function closeEditPopup() {
+      if (editPopup) {
+        document.body.removeChild(editPopup);
+        document.removeEventListener('mousedown', handleClickOutside);
+        editPopup = null;
+        currentEditingStation = null;
+      }
+    }
+    
+    // 更新LOGO样式函数，使用data属性存储字符
+    function updateLogoStyle() {
+      // 更新LOGO形状
+      if (app.logoShape === 'circle') {
+        elements.logo.className = 'logo circle';
+      } else {
+        elements.logo.className = 'logo square';
+      }
+      
+      // 更新LOGO颜色和字符
+      elements.logo.style.borderColor = app.lineColor;
+      elements.logo.style.color = '#000';
+      elements.logo.setAttribute('data-char', app.logoChar);
+      elements.logo.textContent = '';
+    }
+    
+    // 修改renderMetroLine函数，修复序号和英文名位置
+    function renderMetroLine() {
+      // Clear containers
+      elements.stationNames.innerHTML = '';
+      elements.stationCodes.innerHTML = '';
+      elements.metroLine.innerHTML = '';
+      
+      // Set line style
+      elements.metroLine.style.backgroundColor = app.lineColor;
+      elements.metroLine.style.background = `linear-gradient(to bottom, ${lightenColor(app.lineColor, 10)}, ${app.lineColor}, ${darkenColor(app.lineColor, 10)})`;
+      
+      // Add animation style once
+      if (!document.getElementById('metro-line-animation')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'metro-line-animation';
+        styleElement.textContent = `
+          @keyframes pulse {
+            0% { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+            50% { box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); }
+            100% { box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+          }
+        `;
+        document.head.appendChild(styleElement);
+      }
+      
+      elements.metroLine.style.animation = 'pulse 4s infinite';
+      
+      // Add arrow
+      const arrow = document.createElement('div');
+      arrow.className = 'arrow';
+      
+      if (app.direction === 'right') {
+        arrow.style.borderLeftColor = app.lineColor;
+      } else {
+        arrow.style.borderRightColor = app.lineColor;
+      }
+      
+      elements.metroLine.appendChild(arrow);
+      elements.arrow = arrow;
+      
+      // Calculate layout with improved dynamic width extension
+      const stationCount = app.stations.length;
+      const minSpacing = 50; // Reduced from 70 to 50 pixels between stations
+      const margin = 70;
+      
+      // Calculate the minimum width needed to avoid overlap
+      const minRequiredWidth = (stationCount - 1) * minSpacing + (margin * 2);
+      
+      // Get the container's current available width (parent container width)
+      const parentWidth = elements.metroLineContainer.parentElement.offsetWidth - 60; // Allow for padding
+      
+      // Determine if we need scrolling (if required width > available width)
+      const needsScrolling = minRequiredWidth > parentWidth;
+      
+      // Set the container and line width to ensure proper spacing
+      const containerWidth = needsScrolling ? minRequiredWidth : parentWidth;
+      
+      // Apply widths to all elements in the container
+      elements.metroLine.style.width = containerWidth + 'px';
+      elements.stationCodes.style.width = containerWidth + 'px';
+      elements.stationNames.style.width = containerWidth + 'px';
+      
+      // Only change the container's styling if we need scrolling
+      if (needsScrolling) {
+        // Ensure the container itself has scrolling enabled
+        elements.metroLineContainer.style.overflowX = 'auto';
+        
+        // Add scroll indicators if many stations
+        if (!document.getElementById('scroll-indicators') && stationCount > 9) {
+          const scrollIndicatorStyle = document.createElement('style');
+          scrollIndicatorStyle.id = 'scroll-indicators';
+          scrollIndicatorStyle.textContent = `
+            .metro-line-container::-webkit-scrollbar {
+              height: 10px;
+            }
+            .metro-line-container::-webkit-scrollbar-track {
+              background: #f1f1f1;
+              border-radius: 5px;
+            }
+            .metro-line-container::-webkit-scrollbar-thumb {
+              background: #888;
+              border-radius: 5px;
+            }
+            .metro-line-container::-webkit-scrollbar-thumb:hover {
+              background: #555;
+            }
+            
+            .scroll-hint {
+              position: absolute;
+              top: 50%;
+              background-color: rgba(0,0,0,0.1);
+              color: #333;
+              padding: 5px 10px;
+              border-radius: 4px;
+              font-size: 12px;
+              z-index: 100;
+              transform: translateY(-50%);
+              animation: fadeInOut 2s infinite;
+              pointer-events: none;
+            }
+            
+            .scroll-hint.right {
+              right: 10px;
+            }
+            
+            .scroll-hint.left {
+              left: 10px;
+            }
+            
+            @keyframes fadeInOut {
+              0%, 100% { opacity: 0.2; }
+              50% { opacity: 0.7; }
+            }
+          `;
+          document.head.appendChild(scrollIndicatorStyle);
+          
+          // Add left/right scroll hints that disappear when scrolled
+          const rightHint = document.createElement('div');
+          rightHint.className = 'scroll-hint right';
+          rightHint.innerHTML = '&raquo;';
+          rightHint.id = 'rightScrollHint';
+          
+          const leftHint = document.createElement('div');
+          leftHint.className = 'scroll-hint left';
+          leftHint.innerHTML = '&laquo;';
+          leftHint.id = 'leftScrollHint';
+          leftHint.style.display = 'none'; // Hide initially
+          
+          elements.metroLineContainer.appendChild(rightHint);
+          elements.metroLineContainer.appendChild(leftHint);
+          
+          // Add scroll event to show/hide hints based on scroll position
+          elements.metroLineContainer.addEventListener('scroll', function() {
+            const scrollLeft = this.scrollLeft;
+            const maxScrollLeft = this.scrollWidth - this.clientWidth;
+            
+            // Show/hide scroll hints based on position
+            document.getElementById('leftScrollHint').style.display = 
+              scrollLeft > 20 ? 'block' : 'none';
+            
+            document.getElementById('rightScrollHint').style.display = 
+              scrollLeft < maxScrollLeft - 20 ? 'block' : 'none';
+          });
+        }
+      } else {
+        // No scrolling needed
+        elements.metroLineContainer.style.overflowX = 'visible';
+        
+        // Remove scroll hints if they exist
+        const leftHint = document.getElementById('leftScrollHint');
+        const rightHint = document.getElementById('rightScrollHint');
+        if (leftHint) leftHint.remove();
+        if (rightHint) rightHint.remove();
+      }
+      
+      // Recalculate with new width
+      const availableWidth = containerWidth - (margin * 2);
+      const spacing = stationCount > 1 ? availableWidth / (stationCount - 1) : availableWidth;
+      
+      // Use document fragments for batch DOM operations
+      const stationsFragment = document.createDocumentFragment();
+      const codesFragment = document.createDocumentFragment();
+      const namesFragment = document.createDocumentFragment();
+      
+      // Create all station elements
+      app.stations.forEach((station, index) => {
+        const xPosition = margin + (index * spacing);
+        
+        // Station dot - 所有站点保持相同样式，不为当前站点特殊处理白点
+        const stationEl = document.createElement('div');
+        stationEl.className = 'station';
+        stationEl.style.left = `${xPosition}px`;
+        
+        const dotEl = document.createElement('div');
+        dotEl.className = 'station-dot';
+        stationEl.appendChild(dotEl);
+        stationsFragment.appendChild(stationEl);
+        
+        // English station name
+        const enNameEl = document.createElement('div');
+        enNameEl.className = 'name-en';
+        enNameEl.textContent = station.nameEn;
+        enNameEl.style.left = `${xPosition - 10}px`;
+        enNameEl.addEventListener('click', () => createEditPopup(station, index));
+        namesFragment.appendChild(enNameEl);
+        
+        // Station code
+        const codeEl = document.createElement('div');
+        codeEl.className = 'station-code';
+        codeEl.textContent = station.code;
+        codeEl.style.left = `${xPosition}px`;
+        codesFragment.appendChild(codeEl);
+        
+        // Japanese/Chinese station name
+        const jpNameEl = document.createElement('div');
+        jpNameEl.className = 'name-jp';
+        jpNameEl.textContent = station.nameJp;
+        jpNameEl.style.left = `${xPosition}px`;
+        
+        // 对当前站点应用特殊样式
+        if (station.isCurrentStation) {
+          // 计算并应用足够的宽度
+          const charCount = station.nameJp.length;
+          const minWidth = Math.max(60, charCount * 10 + 20); // 与SVG导出保持一致的计算
+          
+          jpNameEl.style.backgroundColor = app.lineColor;
+          jpNameEl.style.color = 'white';
+          jpNameEl.style.minWidth = `${minWidth}px`;
+          jpNameEl.style.width = 'auto'; // 允许容器根据内容调整
+          jpNameEl.style.padding = '5px 8px';
+          jpNameEl.style.borderRadius = '4px';
+          jpNameEl.style.boxSizing = 'content-box'; // 确保padding不挤压内容区域
+          jpNameEl.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+          
+          // 在站名下方添加"位于该站"标记
+          setTimeout(() => {
+            // 获取实际DOM元素高度后再计算位置
+            const jpHeight = jpNameEl.offsetHeight;
+            const locationY = 85 + jpHeight + 25; // 站名底部下方25px
+            
+            const locationMarker = document.createElement('div');
+            locationMarker.className = 'current-station-marker';
+            locationMarker.textContent = '位于该站';
+            locationMarker.style.left = `${xPosition}px`;
+            locationMarker.style.top = `${locationY}px`;
+            locationMarker.style.backgroundColor = app.lineColor;
+            locationMarker.style.width = '90px'; // 固定宽度
+            elements.stationNames.appendChild(locationMarker);
+          }, 0);
+        }
+        
+        jpNameEl.addEventListener('click', () => createEditPopup(station, index));
+        namesFragment.appendChild(jpNameEl);
+      });
+      
+      // Add code line
+      const codeLine = document.createElement('div');
+      codeLine.className = 'station-code-line';
+      elements.stationCodes.appendChild(codeLine);
+      
+      // Append all fragments at once (reduces reflows)
+      elements.metroLine.appendChild(stationsFragment);
+      elements.stationCodes.appendChild(codesFragment);
+      elements.stationNames.appendChild(namesFragment);
+      
+      // Update logo style
+      updateLogoStyle();
+    }
+
+    // 删除站点
+    function removeStation(index) {
+      app.stations.splice(index, 1);
+      // 重新编号站点代码
+      app.stations.forEach((station, idx) => {
+        const newIdx = idx + 1;
+        station.code = `G-${newIdx < 10 ? '0' : ''}${newIdx}`;
+      });
+      renderMetroLine();
+    }
+
+    // 修改SVG线路生成代码，使线路更美观
+    function generateSVG() {
+      // Calculate the required width based on station count
+      const stationCount = app.stations.length;
+      const minStationSpacing = 50; // Reduced from 70 to 50 pixels between stations
+      const margin = 100;
+      const minLineWidth = (stationCount - 1) * minStationSpacing;
+      const lineWidth = Math.max(1000, minLineWidth);
+      
+      // Calculate total SVG width - increase SVG width if needed
+      const svgWidth = Math.max(1200, lineWidth + (margin * 2));
+      
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', svgWidth);
+      svg.setAttribute('height', '700'); // 增加高度确保有足够空间
+      svg.setAttribute('viewBox', `0 0 ${svgWidth} 700`);
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+      
+      const y = 280;
+      const startX = margin;
+      const stationSpacing = lineWidth / (stationCount > 1 ? stationCount - 1 : 1);
+      
+      // Draw main line
+      const mainLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      mainLine.setAttributeNS(null, 'x1', startX);
+      mainLine.setAttributeNS(null, 'y1', y);
+      mainLine.setAttributeNS(null, 'x2', startX + lineWidth);
+      mainLine.setAttributeNS(null, 'y2', y);
+      mainLine.setAttributeNS(null, 'stroke', app.lineColor);
+      mainLine.setAttributeNS(null, 'stroke-width', '40');
+      mainLine.setAttributeNS(null, 'stroke-linecap', 'round');
+      svg.appendChild(mainLine);
+      
+      // Draw arrow based on direction
+      const arrowPoint = app.direction === 'right' ? 
+        { x: startX + lineWidth, dir: 1 } : 
+        { x: startX, dir: -1 };
+        
+      const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      arrow.setAttributeNS(null, 'points', 
+        `${arrowPoint.x + 30 * arrowPoint.dir},${y} ${arrowPoint.x},${y - 20} ${arrowPoint.x},${y + 20}`
+      );
+      arrow.setAttributeNS(null, 'fill', app.lineColor);
+      svg.appendChild(arrow);
+      
+      // Add code line
+      const codeLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      codeLine.setAttributeNS(null, 'x1', startX - 20);
+      codeLine.setAttributeNS(null, 'y1', y + 60);
+      codeLine.setAttributeNS(null, 'x2', startX + lineWidth + 20);
+      codeLine.setAttributeNS(null, 'y2', y + 60);
+      codeLine.setAttributeNS(null, 'stroke', '#000');
+      codeLine.setAttributeNS(null, 'stroke-width', '2');
+      svg.appendChild(codeLine);
+      
+      // Draw stations and station names
+      app.stations.forEach((station, i) => {
+        const x = startX + i * stationSpacing;
+        const jpStartY = y + 90;
+        const charHeight = 28;
+        
+        // Station dot
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttributeNS(null, 'cx', x);
+        dot.setAttributeNS(null, 'cy', y);
+        dot.setAttributeNS(null, 'r', '15');
+        dot.setAttributeNS(null, 'fill', 'white');
+        dot.setAttributeNS(null, 'stroke', '#333');
+        dot.setAttributeNS(null, 'stroke-width', '2');
+        svg.appendChild(dot);
+        
+        // English station name
+        const nameEn = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        nameEn.setAttributeNS(null, 'x', x - 10);
+        nameEn.setAttributeNS(null, 'y', y - 25);
+        nameEn.setAttributeNS(null, 'fill', '#000');
+        nameEn.setAttributeNS(null, 'font-family', 'Arial, sans-serif');
+        nameEn.setAttributeNS(null, 'font-size', '16px');
+        nameEn.setAttributeNS(null, 'font-weight', 'bold');
+        nameEn.setAttributeNS(null, 'text-anchor', 'start');
+        nameEn.setAttributeNS(null, 'transform', `rotate(-45 ${x-10} ${y-25})`);
+        nameEn.textContent = station.nameEn;
+        svg.appendChild(nameEn);
+        
+        // Station code
+        const code = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        code.setAttributeNS(null, 'x', x);
+        code.setAttributeNS(null, 'y', y + 40);
+        code.setAttributeNS(null, 'fill', '#000');
+        code.setAttributeNS(null, 'font-family', 'Arial, sans-serif');
+        code.setAttributeNS(null, 'font-size', '18px');
+        code.setAttributeNS(null, 'font-weight', '900');
+        code.setAttributeNS(null, 'text-anchor', 'middle');
+        code.textContent = station.code;
+        svg.appendChild(code);
+        
+        // 处理当前站点样式
+        if (station.isCurrentStation) {
+          // 计算背景大小 - 确保足够宽高
+          const nameLength = station.nameJp.length;
+          const nameHeight = nameLength * charHeight + 10;
+          const bgWidth = 50; // 固定宽度，足够容纳文字
+          
+          // 添加站名背景 - 确保足够大
+          const jpNameBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          jpNameBg.setAttributeNS(null, 'x', x - bgWidth/2);
+          jpNameBg.setAttributeNS(null, 'y', jpStartY - 25);
+          jpNameBg.setAttributeNS(null, 'width', bgWidth);
+          jpNameBg.setAttributeNS(null, 'height', nameHeight);
+          jpNameBg.setAttributeNS(null, 'fill', app.lineColor);
+          jpNameBg.setAttributeNS(null, 'rx', '8');
+          jpNameBg.setAttributeNS(null, 'ry', '8');
+          svg.appendChild(jpNameBg);
+          
+          // 添加"位于该站"标记 - 放在站名正下方
+          const markerWidth = 100; // 增加宽度确保文字能完全显示
+          const markerY = jpStartY + nameHeight + 15; // 站名下方15px
+          
+          const markerBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          markerBg.setAttributeNS(null, 'x', x - markerWidth/2);
+          markerBg.setAttributeNS(null, 'y', markerY);
+          markerBg.setAttributeNS(null, 'width', markerWidth);
+          markerBg.setAttributeNS(null, 'height', '30'); // 增加高度
+          markerBg.setAttributeNS(null, 'fill', app.lineColor);
+          markerBg.setAttributeNS(null, 'rx', '15');
+          markerBg.setAttributeNS(null, 'ry', '15');
+          svg.appendChild(markerBg);
+          
+          // 添加"位于该站"文本
+          const markerText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          markerText.setAttributeNS(null, 'x', x);
+          markerText.setAttributeNS(null, 'y', markerY + 20); // 垂直居中
+          markerText.setAttributeNS(null, 'fill', 'white');
+          markerText.setAttributeNS(null, 'font-family', '"Microsoft YaHei", "微软雅黑", SimHei, 黑体, sans-serif');
+          markerText.setAttributeNS(null, 'font-size', '16px'); // 增大字号
+          markerText.setAttributeNS(null, 'font-weight', 'bold');
+          markerText.setAttributeNS(null, 'text-anchor', 'middle');
+          markerText.textContent = '位于该站';
+          svg.appendChild(markerText);
+        }
+        
+        // 绘制站名文字
+        for (let j = 0; j < station.nameJp.length; j++) {
+          const char = station.nameJp.charAt(j);
+          const nameJpChar = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          nameJpChar.setAttributeNS(null, 'x', x); // 确保水平居中
+          nameJpChar.setAttributeNS(null, 'y', jpStartY + j * charHeight);
+          nameJpChar.setAttributeNS(null, 'fill', station.isCurrentStation ? 'white' : '#000');
+          nameJpChar.setAttributeNS(null, 'font-family', '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", "SimSun", "宋体", "MS Gothic", "Yu Gothic", sans-serif');
+          nameJpChar.setAttributeNS(null, 'font-size', '24px');
+          nameJpChar.setAttributeNS(null, 'font-weight', '900');
+          nameJpChar.setAttributeNS(null, 'text-anchor', 'middle'); // 确保文本水平居中
+          nameJpChar.textContent = char;
+          svg.appendChild(nameJpChar);
+        }
+      });
+      
+      // Logo and title position based on direction
+      const logoConfig = app.direction === 'right' ? 
+        { logoX: 70, logoY: 70, textX: 170, textAnchor: 'start' } : 
+        { logoX: svgWidth - 70, logoY: 70, textX: svgWidth - 170, textAnchor: 'end' };
+      
+      drawLogoAndTitle(svg, app, logoConfig.logoX, logoConfig.logoY, logoConfig.textX, logoConfig.textAnchor);
+      
+      return svg;
+    }
+
+    // Replace the current drawLogoAndTitle function with this reliable version that ensures the character is visible
+    function drawLogoAndTitle(svg, app, logoX, logoY, textX, textAnchor) {
+      // First draw the border shape
+      if (app.logoShape === 'circle') {
+        const logoCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        logoCircle.setAttributeNS(null, 'cx', logoX);
+        logoCircle.setAttributeNS(null, 'cy', logoY);
+        logoCircle.setAttributeNS(null, 'r', '45');
+        logoCircle.setAttributeNS(null, 'fill', 'transparent');
+        logoCircle.setAttributeNS(null, 'stroke', app.lineColor);
+        logoCircle.setAttributeNS(null, 'stroke-width', '20');
+        svg.appendChild(logoCircle);
+      } else {
+        const logoRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        logoRect.setAttributeNS(null, 'x', logoX - 45);
+        logoRect.setAttributeNS(null, 'y', logoY - 45);
+        logoRect.setAttributeNS(null, 'width', '90');
+        logoRect.setAttributeNS(null, 'height', '90');
+        logoRect.setAttributeNS(null, 'rx', '15');
+        logoRect.setAttributeNS(null, 'ry', '15');
+        logoRect.setAttributeNS(null, 'fill', 'transparent');
+        logoRect.setAttributeNS(null, 'stroke', app.lineColor);
+        logoRect.setAttributeNS(null, 'stroke-width', '20');
+        svg.appendChild(logoRect);
+      }
+      
+      // Return to using standard SVG text instead of foreignObject
+      // Create a properly centered and positioned text element
+      const logoText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      
+      // Set precise attributes for reliable centering
+      logoText.setAttributeNS(null, 'x', logoX);
+      logoText.setAttributeNS(null, 'y', logoY);
+      logoText.setAttributeNS(null, 'dominant-baseline', 'central');
+      logoText.setAttributeNS(null, 'text-anchor', 'middle');
+      logoText.setAttributeNS(null, 'font-family', 'Arial, sans-serif');
+      logoText.setAttributeNS(null, 'font-size', '60px');
+      logoText.setAttributeNS(null, 'font-weight', 'bold');
+      logoText.setAttributeNS(null, 'fill', '#000000');
+      logoText.setAttributeNS(null, 'y', logoY + 5); // 微调y坐标使其在垂直方向更居中
+      logoText.textContent = app.logoChar;
+      
+      // Add to SVG
+      svg.appendChild(logoText);
+      
+      // Add line name parts
+      const nameEn = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      nameEn.setAttributeNS(null, 'x', textX);
+      nameEn.setAttributeNS(null, 'y', logoY - 10);
+      nameEn.setAttributeNS(null, 'fill', '#000');
+      nameEn.setAttributeNS(null, 'font-family', 'Arial, sans-serif');
+      nameEn.setAttributeNS(null, 'font-size', '36px');
+      nameEn.setAttributeNS(null, 'font-weight', 'bolder'); // 使英文站名更粗
+      nameEn.setAttributeNS(null, 'stroke', '#000000');
+      nameEn.setAttributeNS(null, 'stroke-width', '0.5px');
+      nameEn.setAttributeNS(null, 'text-anchor', textAnchor);
+      nameEn.textContent = app.lineNameEn;
+      svg.appendChild(nameEn);
+      
+      const nameJp = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      nameJp.setAttributeNS(null, 'x', textX);
+      nameJp.setAttributeNS(null, 'y', logoY + 40);
+      nameJp.setAttributeNS(null, 'fill', '#000');
+      nameJp.setAttributeNS(null, 'font-family', '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", "SimSun", "宋体", "MS Gothic", "Yu Gothic", sans-serif');
+      nameJp.setAttributeNS(null, 'font-size', '48px');
+      nameJp.setAttributeNS(null, 'font-weight', 'bolder'); // 使日文站名更粗
+      nameJp.setAttributeNS(null, 'stroke', '#000000');
+      nameJp.setAttributeNS(null, 'stroke-width', '0.7px');
+      nameJp.setAttributeNS(null, 'text-anchor', textAnchor);
+      nameJp.textContent = app.lineNameJp;
+      svg.appendChild(nameJp);
+    }
+
+    // 修改导出SVG函数，确保foreignObject正确处理
+    function exportSVG() {
+      const svg = generateSVG();
+      
+      // 确保SVG包含正确的名称空间
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+      
+      // 序列化并下载
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${app.lineNameEn.replace(/\s+/g, '-')}.svg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      // 确保文本元素有正确的居中属性
+      const textElements = svg.querySelectorAll('text');
+      textElements.forEach(text => {
+        // 添加文本居中属性
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        
+        // 如果文本在一个组内，可能需要确保正确的变换
+        const parentGroup = text.parentElement;
+        if (parentGroup && parentGroup.tagName === 'g') {
+          // 可能需要调整组的变换
+          // 这取决于您具体的SVG结构
+        }
+      });
+    }
+
+    // Optimize PNG export with better error handling and cleaner code
+    function exportPNG() {
+      try {
+        const svg = generateSVG();
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        
+        // Get SVG dimensions
+        const svgWidth = parseInt(svg.getAttribute('width'));
+        const svgHeight = parseInt(svg.getAttribute('height'));
+        
+        // Create Blob and URL
+        const blob = new Blob([svgString], {type: 'image/svg+xml'});
+        const url = URL.createObjectURL(blob);
+        
+        // Create and load image
+        const img = new Image();
+        
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          canvas.width = svgWidth;  // Use the dynamic width
+          canvas.height = svgHeight;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          
+          // Convert to PNG and download
+          canvas.toBlob(function(blob) {
+            const fileName = `${app.lineNameEn.replace(/\s+/g, '-')}.png`;
+            downloadBlob(blob, fileName);
+            URL.revokeObjectURL(url);
+          }, 'image/png');
+        };
+        
+        img.onerror = function(e) {
+          console.error("Image loading failed", e);
+          exportPNGFallback(svgString, svgWidth, svgHeight);
+        };
+        
+        img.src = url;
+        
+      } catch (err) {
+        console.error("Export PNG error:", err);
+        alert("Export failed: " + err.message);
+      }
+    }
+
+    // Update the fallback method for PNG export to handle dynamic width
+    function exportPNGFallback(svgString, width, height) {
+      try {
+        // Create data URI directly
+        const svgBase64 = btoa(unescape(encodeURIComponent(svgString)));
+        const dataUri = `data:image/svg+xml;base64,${svgBase64}`;
+        
+        const img = new Image();
+        
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          canvas.width = width;  // Use the dynamic width
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          
+          canvas.toBlob(function(blob) {
+            const fileName = `${app.lineNameEn.replace(/\s+/g, '-')}.png`;
+            downloadBlob(blob, fileName);
+          }, 'image/png');
+        };
+        
+        img.onerror = function() {
+          alert("Unable to export PNG. Please try exporting as SVG instead.");
+        };
+        
+        img.src = dataUri;
+      } catch (err) {
+        console.error("Fallback PNG export error:", err);
+        alert("Export failed. Please try the SVG option instead.");
+      }
+    }
+
+    // Helper function for downloading blobs
+    function downloadBlob(blob, fileName) {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    }
+
+    // 添加颜色处理辅助函数
+    function lightenColor(color, percent) {
+      return adjustColor(color, percent);
+    }
+
+    function darkenColor(color, percent) {
+      return adjustColor(color, -percent);
+    }
+
+    function adjustColor(color, percent) {
+      // Remove the # if present
+      color = color.replace('#', '');
+      
+      // Convert to RGB
+      const r = parseInt(color.substring(0, 2), 16);
+      const g = parseInt(color.substring(2, 4), 16);
+      const b = parseInt(color.substring(4, 6), 16);
+      
+      // Adjust based on percent
+      const factor = percent / 100;
+      const adjustR = Math.round(r + (factor * 255));
+      const adjustG = Math.round(g + (factor * 255));
+      const adjustB = Math.round(b + (factor * 255));
+      
+      // Ensure values are within 0-255
+      const newR = Math.min(255, Math.max(0, adjustR)).toString(16).padStart(2, '0');
+      const newG = Math.min(255, Math.max(0, adjustG)).toString(16).padStart(2, '0');
+      const newB = Math.min(255, Math.max(0, adjustB)).toString(16).padStart(2, '0');
+      
+      return `#${newR}${newG}${newB}`;
+    }
+
+    // Add debounce function to prevent excessive rendering on input events
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Consolidate event listeners with debouncing
+    function setupEventListeners() {
+      // Immediate update events (no need for debounce)
+      elements.logoShape.addEventListener('change', function() {
+        app.logoShape = this.value;
+        updateDisplay();
+      });
+      
+      elements.direction.addEventListener('change', function() {
+        app.direction = this.value;
+        updateDisplay();
+      });
+      
+      elements.addStationBtn.addEventListener('click', addStation);
+      elements.exportSvgBtn.addEventListener('click', exportSVG);
+      elements.exportPngBtn.addEventListener('click', exportPNG);
+      
+      // Debounced input events to prevent excessive updates
+      const updateDisplayDebounced = debounce(updateDisplay, 100);
+      
+      elements.lineColor.addEventListener('input', function() {
+        app.lineColor = this.value;
+        updateDisplayDebounced();
+      });
+      
+      elements.logoChar.addEventListener('input', function() {
+        app.logoChar = this.value;
+        updateStationCodes();
+        updateDisplayDebounced();
+      });
+      
+      elements.lineNameEn.addEventListener('input', function() {
+        app.lineNameEn = this.value;
+        updateDisplayDebounced();
+      });
+      
+      elements.lineNameJp.addEventListener('input', function() {
+        app.lineNameJp = this.value;
+        updateDisplayDebounced();
+      });
+    }
+
+    // Call this function to set up all event listeners
+    setupEventListeners();
+
+    // 初始化渲染
+    updateDisplay();
+
+    // 站点编辑工作台函数 - 替换现有的renderStationsEditor函数
+    function renderStationsEditor() {
+      // 清空现有内容
+      elements.stationsEditor.innerHTML = '';
+      
+      // 创建工作台头部控制区
+      const editorHeader = document.createElement('div');
+      editorHeader.className = 'editor-header';
+      editorHeader.innerHTML = `
+        <div class="editor-controls">
+          <div class="search-box">
+            <input type="text" id="stationSearch" placeholder="搜索站点..." />
+            <button class="search-btn"><i>🔍</i></button>
+          </div>
+          <div class="editor-actions">
+            <button class="action-btn sort-btn" title="排序站点">↕️ 排序</button>
+            <button class="action-btn multi-select-btn" title="多选模式">☑️ 多选</button>
+            <button class="action-btn delete-selected-btn" style="display: none; background-color: #f44336; color: white;" title="删除选中站点">🗑️ 删除选中</button>
+          </div>
+        </div>
+        <div class="editor-table-header">
+          <div class="col-checkbox" style="display: none;"><input type="checkbox" id="select-all" title="全选/取消全选"></div>
+          <div class="col-index">序号</div>
+          <div class="col-code">站点代码</div>
+          <div class="col-name-cn">中文名称</div>
+          <div class="col-name-en">英文名称</div>
+          <div class="col-actions">操作</div>
+        </div>
+      `;
+      elements.stationsEditor.appendChild(editorHeader);
+      
+      // 创建站点列表容器
+      const stationsList = document.createElement('div');
+      stationsList.className = 'stations-list';
+      
+      // 当前是否处于多选模式
+      let isMultiSelectMode = false;
+      
+      // 添加每个站点行
+      app.stations.forEach((station, index) => {
+        const stationRow = document.createElement('div');
+        stationRow.className = 'station-row';
+        stationRow.innerHTML = `
+          <div class="col-checkbox" style="display: none;">
+            <input type="checkbox" class="station-checkbox" data-index="${index}">
+          </div>
+          <div class="col-index">${index + 1}</div>
+          <div class="col-code">${station.code}</div>
+          <div class="col-name-cn" contenteditable="true" data-index="${index}" data-original="${station.nameJp}">${station.nameJp}</div>
+          <div class="col-name-en" contenteditable="true" data-index="${index}" data-original="${station.nameEn}">${station.nameEn}</div>
+          <div class="col-actions">
+            <button class="location-btn ${station.isCurrentStation ? 'active' : ''}" data-index="${index}">
+              ${station.isCurrentStation ? '当前位置 ✓' : '位于该站'}
+            </button>
+            <button class="up-btn" title="上移站点" ${index === 0 ? 'disabled' : ''}>↑</button>
+            <button class="down-btn" title="下移站点" ${index === app.stations.length - 1 ? 'disabled' : ''}>↓</button>
+            <button class="remove-btn" title="删除站点">🗑️</button>
+          </div>
+        `;
+        
+        // 添加行样式，高亮当前站
+        if (station.isCurrentStation) {
+          stationRow.classList.add('current-station-row');
+        }
+        
+        // 添加行点击事件 - 选中行
+        stationRow.addEventListener('click', function(e) {
+          // 如果点击的是按钮、复选框或可编辑区域，不执行选中行操作
+          if (e.target.tagName === 'BUTTON' || 
+              e.target.tagName === 'INPUT' || 
+              e.target.contentEditable === 'true') return;
+          
+          // 移除其他行的选中状态
+          const selectedRows = document.querySelectorAll('.station-row.selected');
+          selectedRows.forEach(row => row.classList.remove('selected'));
+          
+          // 为当前行添加选中状态
+          this.classList.add('selected');
+        });
+        
+        // 为当前行添加位于该站按钮事件
+        const locationBtn = stationRow.querySelector('.location-btn');
+        locationBtn.addEventListener('click', function() {
+          const index = parseInt(this.getAttribute('data-index'));
+          
+          // 先将所有站点重置
+          app.stations.forEach((s, i) => {
+            s.isCurrentStation = false;
+          });
+          
+          // 切换当前站点的标记状态
+          const isCurrentlyMarked = this.classList.contains('active');
+          if (!isCurrentlyMarked) {
+            app.stations[index].isCurrentStation = true;
+          }
+          
+          // 更新界面
+          updateDisplay();
+        });
+        
+        stationsList.appendChild(stationRow);
+      });
+      
+      elements.stationsEditor.appendChild(stationsList);
+      
+      // 为直接编辑添加事件处理
+      const editableCells = document.querySelectorAll('[contenteditable="true"]');
+      editableCells.forEach(cell => {
+        // 保存初始值，用于取消编辑
+        const originalValue = cell.textContent;
+        cell.dataset.original = originalValue;
+        
+        // 失去焦点时保存
+        cell.addEventListener('blur', function() {
+          const index = parseInt(this.dataset.index);
+          const isChinese = this.classList.contains('col-name-cn');
+          
+          if (isChinese) {
+            // 如果中文名更改了，自动更新英文名
+            const newChineseName = this.textContent;
+            if (newChineseName !== app.stations[index].nameJp) {
+              app.stations[index].nameJp = newChineseName;
+              
+              // 生成对应的拼音并更新英文名
+              const newPinyin = generateEnglishStationName(newChineseName);
+              if (newPinyin) {
+                app.stations[index].nameEn = newPinyin;
+                // 更新英文名称单元格
+                const rowEl = this.closest('.station-row');
+                const englishCell = rowEl.querySelector('.col-name-en');
+                englishCell.textContent = newPinyin;
+              }
+            }
+          } else {
+            // 直接更新英文名
+            app.stations[index].nameEn = this.textContent;
+          }
+          
+          // 更新线路图
+          renderMetroLine();
+        });
+        
+        // 按下Enter键时保存并完成编辑
+        cell.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.blur(); // 触发blur事件进行保存
+          } else if (e.key === 'Escape') {
+            // 恢复原值并取消编辑
+            this.textContent = this.dataset.original;
+            this.blur();
+          }
+        });
+      });
+      
+      // 添加按钮事件处理
+      document.querySelectorAll('.up-btn').forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+          if (index > 0) {
+            // 交换站点位置
+            const temp = app.stations[index];
+            app.stations[index] = app.stations[index - 1];
+            app.stations[index - 1] = temp;
+            updateDisplay();
+          }
+        });
+      });
+      
+      document.querySelectorAll('.down-btn').forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+          if (index < app.stations.length - 1) {
+            // 交换站点位置
+            const temp = app.stations[index];
+            app.stations[index] = app.stations[index + 1];
+            app.stations[index + 1] = temp;
+            updateDisplay();
+          }
+        });
+      });
+      
+      document.querySelectorAll('.remove-btn').forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+          if (confirm(`确定要删除站点 "${app.stations[index].nameJp}" 吗？`)) {
+            app.stations.splice(index, 1);
+            updateDisplay();
+          }
+        });
+      });
+      
+      // 添加搜索功能
+      const searchInput = document.getElementById('stationSearch');
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          const searchTerm = this.value.toLowerCase();
+          const stationRows = document.querySelectorAll('.station-row');
+          
+          stationRows.forEach(row => {
+            const stationName = row.querySelector('.col-name-cn').textContent.toLowerCase();
+            const stationNameEn = row.querySelector('.col-name-en').textContent.toLowerCase();
+            const stationCode = row.querySelector('.col-code').textContent.toLowerCase();
+            
+            if (stationName.includes(searchTerm) || 
+                stationNameEn.includes(searchTerm) || 
+                stationCode.includes(searchTerm)) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+          });
+        });
+      }
+      
+      // 添加排序功能
+      const sortBtn = document.querySelector('.sort-btn');
+      if (sortBtn) {
+        sortBtn.addEventListener('click', function() {
+          const sortMenu = document.createElement('div');
+          sortMenu.className = 'sort-menu';
+          sortMenu.innerHTML = `
+            <div class="sort-option" data-sort="index">按序号排序</div>
+            <div class="sort-option" data-sort="code">按站点代码排序</div>
+            <div class="sort-option" data-sort="nameCn">按中文名称排序</div>
+            <div class="sort-option" data-sort="nameEn">按英文名称排序</div>
+          `;
+          
+          // 定位菜单
+          const rect = this.getBoundingClientRect();
+          sortMenu.style.position = 'absolute';
+          sortMenu.style.top = `${rect.bottom}px`;
+          sortMenu.style.left = `${rect.left}px`;
+          
+          document.body.appendChild(sortMenu);
+          
+          // 添加排序选项点击事件
+          const sortOptions = sortMenu.querySelectorAll('.sort-option');
+          sortOptions.forEach(option => {
+            option.addEventListener('click', function() {
+              const sortBy = this.getAttribute('data-sort');
+              
+              // 根据不同的排序选项排序
+              switch(sortBy) {
+                case 'index':
+                  // 保持原有顺序，不做特殊排序
+                  break;
+                case 'code':
+                  app.stations.sort((a, b) => a.code.localeCompare(b.code));
+                  break;
+                case 'nameCn':
+                  app.stations.sort((a, b) => a.nameJp.localeCompare(b.nameJp));
+                  break;
+                case 'nameEn':
+                  app.stations.sort((a, b) => a.nameEn.localeCompare(b.nameEn));
+                  break;
+              }
+              
+              updateDisplay();
+              
+              // 移除排序菜单
+              document.body.removeChild(sortMenu);
+            });
+          });
+          
+          // 点击其他地方关闭菜单
+          document.addEventListener('click', function closeMenu(e) {
+            if (!sortMenu.contains(e.target) && e.target !== sortBtn) {
+              document.body.removeChild(sortMenu);
+              document.removeEventListener('click', closeMenu);
+            }
+          });
+        });
+      }
+      
+      // 多选功能
+      const multiSelectBtn = document.querySelector('.multi-select-btn');
+      const deleteSelectedBtn = document.querySelector('.delete-selected-btn');
+      const checkboxCols = document.querySelectorAll('.col-checkbox');
+      const selectAllCheckbox = document.getElementById('select-all');
+      
+      if (multiSelectBtn && deleteSelectedBtn) {
+        // 多选模式切换
+        multiSelectBtn.addEventListener('click', function() {
+          isMultiSelectMode = !isMultiSelectMode;
+          
+          // 显示/隐藏复选框列
+          checkboxCols.forEach(col => {
+            col.style.display = isMultiSelectMode ? 'flex' : 'none';
+          });
+          
+          // 显示/隐藏删除选中按钮
+          deleteSelectedBtn.style.display = isMultiSelectMode ? 'block' : 'none';
+          
+          // 更新按钮文本
+          this.innerHTML = isMultiSelectMode ? '✖️ 取消多选' : '☑️ 多选';
+          this.style.backgroundColor = isMultiSelectMode ? '#f5f5f5' : '';
+          this.style.color = isMultiSelectMode ? '#f44336' : '';
+        });
+        
+        // 全选/取消全选
+        selectAllCheckbox.addEventListener('change', function() {
+          const checkboxes = document.querySelectorAll('.station-checkbox');
+          checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+          });
+        });
+        
+        // 删除选中站点
+        deleteSelectedBtn.addEventListener('click', function() {
+          const selectedIndexes = [];
+          const checkboxes = document.querySelectorAll('.station-checkbox:checked');
+          
+          // 收集选中的索引
+          checkboxes.forEach(checkbox => {
+            selectedIndexes.push(parseInt(checkbox.dataset.index));
+          });
+          
+          if (selectedIndexes.length === 0) {
+            alert('请先选择要删除的站点');
+            return;
+          }
+          
+          if (confirm(`确定要删除选中的 ${selectedIndexes.length} 个站点吗？`)) {
+            // 按索引从大到小排序，以便从后往前删除，避免删除时索引变化
+            selectedIndexes.sort((a, b) => b - a);
+            
+            // 删除选中的站点
+            selectedIndexes.forEach(index => {
+              app.stations.splice(index, 1);
+            });
+            
+            // 更新显示
+            updateDisplay();
+          }
+        });
+      }
+    }
+
+    // 修改 updateDisplay 函数，添加调用 renderStationsEditor
+    function updateDisplay() {
+      // 更新站点代码
+      updateStationCodes();
+      
+      // 更新LOGO
+      updateLogoStyle();
+      
+      // 线路名称
+      elements.lineNameEnDisplay.textContent = app.lineNameEn;
+      elements.lineNameJpDisplay.textContent = app.lineNameJp;
+      
+      // 箭头方向和线路名位置调整 - 只移动位置，不改变对齐方式
+      elements.metroLineContainer.className = `metro-line-container ${app.direction}`;
+      
+      const header = document.querySelector('.metro-line-header');
+      header.style.flexDirection = 'row'; // 始终保持LOGO在左侧
+      
+      if (app.direction === 'left') {
+        // 往右移动标题区域
+        header.style.justifyContent = 'flex-end'; // 整体靠右
+        header.style.paddingRight = '50px'; // 右侧留出空间
+      } else {
+        // 恢复默认位置
+        header.style.justifyContent = 'flex-start'; // 整体靠左
+        header.style.paddingRight = '0'; // 移除右侧间距
+      }
+      
+      // 保持原有样式一致
+      header.querySelector('.logo').style.marginRight = '25px';
+      header.querySelector('.logo').style.marginLeft = '0';
+      header.querySelector('.line-name').style.textAlign = 'left'; // 始终保持文本左对齐
+      
+      if (elements.arrow) {
+        elements.arrow.style.borderLeftColor = app.lineColor;
+        elements.arrow.style.borderRightColor = app.lineColor;
+      }
+      
+      // 重新渲染线路
+      renderMetroLine();
+      
+      // 重新渲染站点编辑工作台
+      renderStationsEditor();
+      
+      // Add scroll controls if needed
+      if (app.stations.length > 9) {
+        addScrollControls();
+      }
+    }
+
+    // Add this function to create scroll controls for better navigation
+    function addScrollControls() {
+      // Create scroll buttons for easier navigation
+      if (document.getElementById('leftScrollBtn') || document.getElementById('rightScrollBtn')) {
+        return; // Already created
+      }
+      
+      const leftBtn = document.createElement('div');
+      leftBtn.className = 'scroll-control left';
+      leftBtn.innerHTML = '&lt;';
+      leftBtn.id = 'leftScrollBtn';
+      leftBtn.addEventListener('click', function() {
+        elements.metroLineContainer.scrollBy({
+          left: -200,
+          behavior: 'smooth'
+        });
+      });
+      
+      const rightBtn = document.createElement('div');
+      rightBtn.className = 'scroll-control right';
+      rightBtn.innerHTML = '&gt;';
+      rightBtn.id = 'rightScrollBtn';
+      rightBtn.addEventListener('click', function() {
+        elements.metroLineContainer.scrollBy({
+          left: 200,
+          behavior: 'smooth'
+        });
+      });
+      
+      elements.metroLineContainer.appendChild(leftBtn);
+      elements.metroLineContainer.appendChild(rightBtn);
+      
+      // Hide left button initially if at start
+      updateScrollButtonVisibility();
+      
+      // Add scroll event listener to show/hide buttons
+      elements.metroLineContainer.addEventListener('scroll', updateScrollButtonVisibility);
+    }
+
+    // Add this function to update scroll button visibility
+    function updateScrollButtonVisibility() {
+      const leftBtn = document.getElementById('leftScrollBtn');
+      const rightBtn = document.getElementById('rightScrollBtn');
+      
+      if (!leftBtn || !rightBtn) return;
+      
+      const scrollLeft = elements.metroLineContainer.scrollLeft;
+      const maxScrollLeft = elements.metroLineContainer.scrollWidth - elements.metroLineContainer.clientWidth;
+      
+      leftBtn.style.opacity = scrollLeft > 20 ? '1' : '0.3';
+      rightBtn.style.opacity = scrollLeft < maxScrollLeft - 20 ? '1' : '0.3';
+    }
+
+    // 生成英文站名（拼音）- 修改为只有第一个字母大写，其余全部小写
+    function generateEnglishStationName(chineseText) {
+      if (!chineseText) return '';
+      
+      // 首先收集所有字符的拼音（全部小写）
+      const pinyinParts = [];
+      
+      for (let i = 0; i < chineseText.length; i++) {
+        const char = chineseText[i];
+        
+        // 检查字符是否在拼音映射中
+        if (pinyinMap[char]) {
+          // 全部转为小写
+          pinyinParts.push(pinyinMap[char].toLowerCase());
+        } else {
+          // 非汉字直接添加（也转为小写）
+          if (/[a-zA-Z0-9]/.test(char)) {
+            pinyinParts.push(char.toLowerCase());
+          } else {
+            // 用占位符代替未映射字符
+            pinyinParts.push(char);
+          }
+        }
+      }
+      
+      // 将所有部分连接起来
+      let result = pinyinParts.join('');
+      
+      // 只将整个字符串的第一个字母大写
+      if (result.length > 0) {
+        result = result.charAt(0).toUpperCase() + result.slice(1);
+      }
+      
+      return result;
+    }
+
+    // 在DOM加载完成后添加这段代码来替换原来的调用
+    document.addEventListener('DOMContentLoaded', function() {
+      // 加载拼音数据
+      loadPinyinData();
+      
+      // 设置事件监听器
+      setupEventListeners();
+      
+      // 初始化渲染
+      updateDisplay();
+    });
+  </script>
+</body>
+</html>

@@ -934,6 +934,33 @@
       justify-content: center;
     }
 
+    /* 添加当前站点信息显示区域样式 */
+    .current-station-info {
+      position: absolute;
+      bottom: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      width: 100%;
+      padding: 20px 0;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .current-station-info .station-name-cn {
+      font-size: 48px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #333;
+    }
+
+    .current-station-info .station-name-en {
+      font-size: 36px;
+      font-weight: bold;
+      color: #666;
+    }
+
     /* 调整汉字站名容器样式，防止溢出 */
     .name-jp {
       position: absolute;
@@ -970,7 +997,7 @@
     <div class="controls">
       <div class="control-group">
         <label>线路颜色:</label>
-        <input type="color" id="lineColor" value="#FFA500" />
+        <input type="color" id="lineColor" value="#000080" />
       </div>
       <div class="control-group">
         <label>标志形状:</label>
@@ -981,7 +1008,7 @@
       </div>
       <div class="control-group">
         <label>标志字符:</label>
-        <input type="text" id="logoChar" maxlength="1" value="G" />
+        <input type="text" id="logoChar" maxlength="1" value="N" />
       </div>
       <div class="control-group">
         <label>方向:</label>
@@ -992,11 +1019,11 @@
       </div>
       <div class="control-group">
         <label>线路名称 (英文):</label>
-        <input type="text" id="lineNameEn" value="Tokyo Metro Ginza Line" />
+        <input type="text" id="lineNameEn" value="Ningyuan Rail Jiuwu Line" />
       </div>
       <div class="control-group">
         <label>线路名称 (汉字):</label>
-        <input type="text" id="lineNameJp" value="東京地下鉄銀座線" />
+        <input type="text" id="lineNameJp" value="宁远轨道九五线" />
       </div>
     </div>
 
@@ -1011,8 +1038,8 @@
         G
       </div>
       <div class="line-name">
-        <div id="lineNameEnDisplay" class="line-name-en">Tokyo Metro Ginza Line</div>
-        <div id="lineNameJpDisplay" class="line-name-jp">東京地下鉄銀座線</div>
+        <div id="lineNameEnDisplay" class="line-name-en">Ningyuan Rail Jiuwu Line</div>
+        <div id="lineNameJpDisplay" class="line-name-jp">宁远轨道九五线</div>
       </div>
     </div>
 
@@ -1028,6 +1055,10 @@
 
       <div id="stationNames" class="station-names">
         <!-- 站点名称将在这里动态生成 -->
+      </div>
+
+      <div id="currentStationInfo" class="current-station-info" style="display: none;">
+        <!-- 当前站点信息将在这里动态生成 -->
       </div>
     </div>
 
@@ -1045,22 +1076,25 @@
   <script>
     // 数据
     const app = {
-      lineColor: '#FFA500',
+      lineColor: '#000080',
       logoShape: 'circle',
-      logoChar: 'G',
+      logoChar: 'N',
       direction: 'right',
-      lineNameEn: 'Tokyo Metro Ginza Line',
-      lineNameJp: '東京地下鉄銀座線',
+      lineNameEn: 'Ningyuan Rail Jiuwu Line',
+      lineNameJp: '宁远轨道九五线',
       stations: [
-        { code: 'G-01', nameEn: 'Shibuya', nameJp: '渋谷', codeColor: '' },
-        { code: 'G-02', nameEn: 'Omoteando', nameJp: '表参道', codeColor: '' },
-        { code: 'G-03', nameEn: 'Gaienmae', nameJp: '外苑前', codeColor: '' },
-        { code: 'G-04', nameEn: 'Aoyama-itchome', nameJp: '青山一丁目', codeColor: '' },
-        { code: 'G-05', nameEn: 'Akasaka-mitsuke', nameJp: '赤坂見附', codeColor: '' },
-        { code: 'G-06', nameEn: 'Tameike-Sanno', nameJp: '溜池山王', codeColor: '' },
-        { code: 'G-07', nameEn: 'Toranomon', nameJp: '虎ノ門', codeColor: '' },
-        { code: 'G-08', nameEn: 'Shimbashi', nameJp: '新橋', codeColor: '' },
-        { code: 'G-09', nameEn: 'Ginza', nameJp: '銀座', codeColor: '' }
+        { code: 'G-01', nameEn: 'Jiuyishan', nameJp: '九嶷山', codeColor: '' },
+        { code: 'G-02', nameEn: 'Wanjing', nameJp: '湾井', codeColor: '' },
+        { code: 'G-03', nameEn: 'Shunling', nameJp: '舜陵', codeColor: '' },
+        { code: 'G-04', nameEn: 'Tongshan', nameJp: '桐山', codeColor: '' },
+        { code: 'G-05', nameEn: 'Wenmiao', nameJp: '文庙', codeColor: '' },
+        { code: 'G-06', nameEn: 'Dongxi', nameJp: '东溪', codeColor: '' },
+        { code: 'G-07', nameEn: 'Renhe', nameJp: '仁和', codeColor: '' },
+        { code: 'G-08', nameEn: 'Shijia', nameJp: '十甲', codeColor: '' },
+        { code: 'G-09', nameEn: 'Baijiaping', nameJp: '柏家坪', codeColor: '' },
+        { code: 'G-10', nameEn: 'Qingshuiqiao', nameJp: '清水桥', codeColor: '' },
+        { code: 'G-11', nameEn: 'Tongmuluo', nameJp: '桐木漯', codeColor: '' },
+        { code: 'G-12', nameEn: 'Wulongshan', nameJp: '五龙山', codeColor: '' }
       ]
     };
 
@@ -1286,6 +1320,11 @@
       elements.stationCodes.innerHTML = '';
       elements.metroLine.innerHTML = '';
       
+      // 获取当前站点信息容器
+      const currentStationInfo = document.getElementById('currentStationInfo');
+      currentStationInfo.innerHTML = '';
+      currentStationInfo.style.display = 'none';
+      
       // Set line style
       elements.metroLine.style.backgroundColor = app.lineColor;
       elements.metroLine.style.background = `linear-gradient(to bottom, ${lightenColor(app.lineColor, 10)}, ${app.lineColor}, ${darkenColor(app.lineColor, 10)})`;
@@ -1321,133 +1360,50 @@
       
       // Calculate layout with improved dynamic width extension
       const stationCount = app.stations.length;
-      const minSpacing = 50; // Reduced from 70 to 50 pixels between stations
+      const minSpacing = 50;
       const margin = 70;
       
       // Calculate the minimum width needed to avoid overlap
       const minRequiredWidth = (stationCount - 1) * minSpacing + (margin * 2);
       
-      // Get the container's current available width (parent container width)
-      const parentWidth = elements.metroLineContainer.parentElement.offsetWidth - 60; // Allow for padding
+      // Get the container's current available width
+      const parentWidth = elements.metroLineContainer.parentElement.offsetWidth - 60;
       
-      // Determine if we need scrolling (if required width > available width)
+      // Determine if we need scrolling
       const needsScrolling = minRequiredWidth > parentWidth;
       
-      // Set the container and line width to ensure proper spacing
+      // Set the container and line width
       const containerWidth = needsScrolling ? minRequiredWidth : parentWidth;
       
-      // Apply widths to all elements in the container
+      // Apply widths
       elements.metroLine.style.width = containerWidth + 'px';
       elements.stationCodes.style.width = containerWidth + 'px';
       elements.stationNames.style.width = containerWidth + 'px';
       
-      // Only change the container's styling if we need scrolling
+      // Handle scrolling
       if (needsScrolling) {
-        // Ensure the container itself has scrolling enabled
         elements.metroLineContainer.style.overflowX = 'auto';
-        
-        // Add scroll indicators if many stations
-        if (!document.getElementById('scroll-indicators') && stationCount > 9) {
-          const scrollIndicatorStyle = document.createElement('style');
-          scrollIndicatorStyle.id = 'scroll-indicators';
-          scrollIndicatorStyle.textContent = `
-            .metro-line-container::-webkit-scrollbar {
-              height: 10px;
-            }
-            .metro-line-container::-webkit-scrollbar-track {
-              background: #f1f1f1;
-              border-radius: 5px;
-            }
-            .metro-line-container::-webkit-scrollbar-thumb {
-              background: #888;
-              border-radius: 5px;
-            }
-            .metro-line-container::-webkit-scrollbar-thumb:hover {
-              background: #555;
-            }
-            
-            .scroll-hint {
-              position: absolute;
-              top: 50%;
-              background-color: rgba(0,0,0,0.1);
-              color: #333;
-              padding: 5px 10px;
-              border-radius: 4px;
-              font-size: 12px;
-              z-index: 100;
-              transform: translateY(-50%);
-              animation: fadeInOut 2s infinite;
-              pointer-events: none;
-            }
-            
-            .scroll-hint.right {
-              right: 10px;
-            }
-            
-            .scroll-hint.left {
-              left: 10px;
-            }
-            
-            @keyframes fadeInOut {
-              0%, 100% { opacity: 0.2; }
-              50% { opacity: 0.7; }
-            }
-          `;
-          document.head.appendChild(scrollIndicatorStyle);
-          
-          // Add left/right scroll hints that disappear when scrolled
-          const rightHint = document.createElement('div');
-          rightHint.className = 'scroll-hint right';
-          rightHint.innerHTML = '&raquo;';
-          rightHint.id = 'rightScrollHint';
-          
-          const leftHint = document.createElement('div');
-          leftHint.className = 'scroll-hint left';
-          leftHint.innerHTML = '&laquo;';
-          leftHint.id = 'leftScrollHint';
-          leftHint.style.display = 'none'; // Hide initially
-          
-          elements.metroLineContainer.appendChild(rightHint);
-          elements.metroLineContainer.appendChild(leftHint);
-          
-          // Add scroll event to show/hide hints based on scroll position
-          elements.metroLineContainer.addEventListener('scroll', function() {
-            const scrollLeft = this.scrollLeft;
-            const maxScrollLeft = this.scrollWidth - this.clientWidth;
-            
-            // Show/hide scroll hints based on position
-            document.getElementById('leftScrollHint').style.display = 
-              scrollLeft > 20 ? 'block' : 'none';
-            
-            document.getElementById('rightScrollHint').style.display = 
-              scrollLeft < maxScrollLeft - 20 ? 'block' : 'none';
-          });
-        }
       } else {
-        // No scrolling needed
         elements.metroLineContainer.style.overflowX = 'visible';
-        
-        // Remove scroll hints if they exist
-        const leftHint = document.getElementById('leftScrollHint');
-        const rightHint = document.getElementById('rightScrollHint');
-        if (leftHint) leftHint.remove();
-        if (rightHint) rightHint.remove();
       }
       
-      // Recalculate with new width
+      // Calculate spacing
       const availableWidth = containerWidth - (margin * 2);
       const spacing = stationCount > 1 ? availableWidth / (stationCount - 1) : availableWidth;
       
-      // Use document fragments for batch DOM operations
+      // Create fragments for batch DOM operations
       const stationsFragment = document.createDocumentFragment();
       const codesFragment = document.createDocumentFragment();
       const namesFragment = document.createDocumentFragment();
+      
+      // Track current station
+      let currentStation = null;
       
       // Create all station elements
       app.stations.forEach((station, index) => {
         const xPosition = margin + (index * spacing);
         
-        // Station dot - 所有站点保持相同样式，不为当前站点特殊处理白点
+        // Station dot
         const stationEl = document.createElement('div');
         stationEl.className = 'station';
         stationEl.style.left = `${xPosition}px`;
@@ -1478,26 +1434,27 @@
         jpNameEl.textContent = station.nameJp;
         jpNameEl.style.left = `${xPosition}px`;
         
-        // 对当前站点应用特殊样式
+        // 处理当前站点
         if (station.isCurrentStation) {
-          // 计算并应用足够的宽度
+          currentStation = station;
+          
+          // 设置站点样式
           const charCount = station.nameJp.length;
-          const minWidth = Math.max(60, charCount * 10 + 20); // 与SVG导出保持一致的计算
+          const minWidth = Math.max(60, charCount * 10 + 20);
           
           jpNameEl.style.backgroundColor = app.lineColor;
           jpNameEl.style.color = 'white';
           jpNameEl.style.minWidth = `${minWidth}px`;
-          jpNameEl.style.width = 'auto'; // 允许容器根据内容调整
+          jpNameEl.style.width = 'auto';
           jpNameEl.style.padding = '5px 8px';
           jpNameEl.style.borderRadius = '4px';
-          jpNameEl.style.boxSizing = 'content-box'; // 确保padding不挤压内容区域
+          jpNameEl.style.boxSizing = 'content-box';
           jpNameEl.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
           
-          // 在站名下方添加"位于该站"标记
+          // 添加"位于该站"标记
           setTimeout(() => {
-            // 获取实际DOM元素高度后再计算位置
             const jpHeight = jpNameEl.offsetHeight;
-            const locationY = 85 + jpHeight + 25; // 站名底部下方25px
+            const locationY = 85 + jpHeight + 25;
             
             const locationMarker = document.createElement('div');
             locationMarker.className = 'current-station-marker';
@@ -1505,7 +1462,7 @@
             locationMarker.style.left = `${xPosition}px`;
             locationMarker.style.top = `${locationY}px`;
             locationMarker.style.backgroundColor = app.lineColor;
-            locationMarker.style.width = '90px'; // 固定宽度
+            locationMarker.style.width = '90px';
             elements.stationNames.appendChild(locationMarker);
           }, 0);
         }
@@ -1519,10 +1476,19 @@
       codeLine.className = 'station-code-line';
       elements.stationCodes.appendChild(codeLine);
       
-      // Append all fragments at once (reduces reflows)
+      // Append all fragments
       elements.metroLine.appendChild(stationsFragment);
       elements.stationCodes.appendChild(codesFragment);
       elements.stationNames.appendChild(namesFragment);
+      
+      // 更新当前站点信息显示
+      if (currentStation) {
+        currentStationInfo.style.display = 'block';
+        currentStationInfo.innerHTML = `
+          <div class="station-name-cn">${currentStation.nameJp}</div>
+          <div class="station-name-en">${currentStation.nameEn} Station</div>
+        `;
+      }
       
       // Update logo style
       updateLogoStyle();
@@ -1543,17 +1509,17 @@
     function generateSVG() {
       // Calculate the required width based on station count
       const stationCount = app.stations.length;
-      const minStationSpacing = 50; // Reduced from 70 to 50 pixels between stations
+      const minStationSpacing = 50;
       const margin = 100;
       const minLineWidth = (stationCount - 1) * minStationSpacing;
       const lineWidth = Math.max(1000, minLineWidth);
       
-      // Calculate total SVG width - increase SVG width if needed
+      // Calculate total SVG width
       const svgWidth = Math.max(1200, lineWidth + (margin * 2));
       
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('width', svgWidth);
-      svg.setAttribute('height', '700'); // 增加高度确保有足够空间
+      svg.setAttribute('height', '700');
       svg.setAttribute('viewBox', `0 0 ${svgWidth} 700`);
       svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
       svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
@@ -1638,12 +1604,12 @@
         
         // 处理当前站点样式
         if (station.isCurrentStation) {
-          // 计算背景大小 - 确保足够宽高
+          // 计算背景大小
           const nameLength = station.nameJp.length;
           const nameHeight = nameLength * charHeight + 10;
-          const bgWidth = 50; // 固定宽度，足够容纳文字
+          const bgWidth = Math.max(60, nameLength * 10 + 20);
           
-          // 添加站名背景 - 确保足够大
+          // 添加站名背景
           const jpNameBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
           jpNameBg.setAttributeNS(null, 'x', x - bgWidth/2);
           jpNameBg.setAttributeNS(null, 'y', jpStartY - 25);
@@ -1654,15 +1620,15 @@
           jpNameBg.setAttributeNS(null, 'ry', '8');
           svg.appendChild(jpNameBg);
           
-          // 添加"位于该站"标记 - 放在站名正下方
-          const markerWidth = 100; // 增加宽度确保文字能完全显示
-          const markerY = jpStartY + nameHeight + 15; // 站名下方15px
+          // 添加"位于该站"标记
+          const markerWidth = 100;
+          const markerY = jpStartY + nameHeight + 15;
           
           const markerBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
           markerBg.setAttributeNS(null, 'x', x - markerWidth/2);
           markerBg.setAttributeNS(null, 'y', markerY);
           markerBg.setAttributeNS(null, 'width', markerWidth);
-          markerBg.setAttributeNS(null, 'height', '30'); // 增加高度
+          markerBg.setAttributeNS(null, 'height', '30');
           markerBg.setAttributeNS(null, 'fill', app.lineColor);
           markerBg.setAttributeNS(null, 'rx', '15');
           markerBg.setAttributeNS(null, 'ry', '15');
@@ -1671,27 +1637,59 @@
           // 添加"位于该站"文本
           const markerText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
           markerText.setAttributeNS(null, 'x', x);
-          markerText.setAttributeNS(null, 'y', markerY + 20); // 垂直居中
+          markerText.setAttributeNS(null, 'y', markerY + 20);
           markerText.setAttributeNS(null, 'fill', 'white');
           markerText.setAttributeNS(null, 'font-family', '"Microsoft YaHei", "微软雅黑", SimHei, 黑体, sans-serif');
-          markerText.setAttributeNS(null, 'font-size', '16px'); // 增大字号
+          markerText.setAttributeNS(null, 'font-size', '16px');
           markerText.setAttributeNS(null, 'font-weight', 'bold');
           markerText.setAttributeNS(null, 'text-anchor', 'middle');
           markerText.textContent = '位于该站';
           svg.appendChild(markerText);
+          
+          // 添加当前站点信息显示区域
+          const infoY = markerY + 60;
+          
+          // 计算真正的中心位置 - 使用整个 SVG 的宽度来计算中心点
+          const centerX = svgWidth / 2;
+          
+          // 添加中文站名 - 完全居中显示
+          const stationNameCn = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          stationNameCn.setAttributeNS(null, 'x', centerX);
+          stationNameCn.setAttributeNS(null, 'y', infoY + 40);
+          stationNameCn.setAttributeNS(null, 'fill', '#333');
+          stationNameCn.setAttributeNS(null, 'font-family', '"Microsoft YaHei", "微软雅黑", SimHei, 黑体, sans-serif');
+          stationNameCn.setAttributeNS(null, 'font-size', '48px');
+          stationNameCn.setAttributeNS(null, 'font-weight', 'bold');
+          stationNameCn.setAttributeNS(null, 'text-anchor', 'middle');
+          stationNameCn.setAttributeNS(null, 'dominant-baseline', 'middle');
+          stationNameCn.textContent = station.nameJp;
+          svg.appendChild(stationNameCn);
+          
+          // 添加英文站名 - 完全居中显示
+          const stationNameEn = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          stationNameEn.setAttributeNS(null, 'x', centerX);
+          stationNameEn.setAttributeNS(null, 'y', infoY + 90);
+          stationNameEn.setAttributeNS(null, 'fill', '#666');
+          stationNameEn.setAttributeNS(null, 'font-family', 'Arial, sans-serif');
+          stationNameEn.setAttributeNS(null, 'font-size', '36px');
+          stationNameEn.setAttributeNS(null, 'font-weight', 'bold');
+          stationNameEn.setAttributeNS(null, 'text-anchor', 'middle');
+          stationNameEn.setAttributeNS(null, 'dominant-baseline', 'middle');
+          stationNameEn.textContent = station.nameEn + ' Station';
+          svg.appendChild(stationNameEn);
         }
         
         // 绘制站名文字
         for (let j = 0; j < station.nameJp.length; j++) {
           const char = station.nameJp.charAt(j);
           const nameJpChar = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          nameJpChar.setAttributeNS(null, 'x', x); // 确保水平居中
+          nameJpChar.setAttributeNS(null, 'x', x);
           nameJpChar.setAttributeNS(null, 'y', jpStartY + j * charHeight);
           nameJpChar.setAttributeNS(null, 'fill', station.isCurrentStation ? 'white' : '#000');
           nameJpChar.setAttributeNS(null, 'font-family', '"Microsoft YaHei", "微软雅黑", "SimHei", "黑体", "SimSun", "宋体", "MS Gothic", "Yu Gothic", sans-serif');
           nameJpChar.setAttributeNS(null, 'font-size', '24px');
           nameJpChar.setAttributeNS(null, 'font-weight', '900');
-          nameJpChar.setAttributeNS(null, 'text-anchor', 'middle'); // 确保文本水平居中
+          nameJpChar.setAttributeNS(null, 'text-anchor', 'middle');
           nameJpChar.textContent = char;
           svg.appendChild(nameJpChar);
         }
